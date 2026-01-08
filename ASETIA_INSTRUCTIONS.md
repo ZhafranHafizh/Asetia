@@ -42,3 +42,11 @@ Modify Shadcn components to follow the Neo-Brutalist style:
 3. Build the Auth pages (Login/Sign-up) with the Neo-Brutalist theme.
 4. Implement Product Listing Grid (Hard-bordered cards).
 5. Setup the payment flow & Resend email automation.
+
+## 7. Role Management Logic
+- **Universal Account:** A single user account can act as both a Buyer and a Seller. No separate accounts needed.
+- **Role Switching:** Implement a simple toggle/switcher in the Dashboard to change the view/interface between "Buyer Mode" and "Seller Mode".
+- **Superadmin (Superuser):** - One specific role `superadmin` for platform management.
+  - Access to a special route `/admin` to moderate products and view all transactions.
+- **Database Mapping:** - Update `profiles` table `role` to support `admin` and a default `user`. 
+  - Within the app logic, differentiate `seller_mode` vs `buyer_mode` based on UI state or session.

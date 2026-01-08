@@ -41,16 +41,12 @@ export async function updateSession(request: NextRequest) {
 
     if (
         !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        request.nextUrl.pathname !== '/'
+        request.nextUrl.pathname.startsWith('/dashboard')
     ) {
-        // no user, potentially redirect to login
-        // For now, we allow public access to home and login. 
-        // Protected routes logic can be expanded here.
-        // const url = request.nextUrl.clone()
-        // url.pathname = '/login'
-        // return NextResponse.redirect(url)
+        // Redirect unauthenticated users to login
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
     }
 
     return supabaseResponse

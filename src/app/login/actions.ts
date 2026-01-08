@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
     }
 
     revalidatePath('/', 'layout')
-    redirect('/')
+    redirect('/dashboard')
 }
 
 export async function signup(formData: FormData) {
@@ -52,7 +52,7 @@ export async function signup(formData: FormData) {
             id: data.user.id,
             full_name: fullName,
             username: email, // Defaulting username to email for now
-            role: 'buyer',
+            role: 'user',
         })
 
         if (profileError) {
@@ -68,5 +68,5 @@ export async function signup(formData: FormData) {
     }
 
     revalidatePath('/', 'layout')
-    redirect('/')
+    redirect('/dashboard')
 }

@@ -6,7 +6,7 @@ create table public.profiles (
   id uuid references auth.users on delete cascade not null primary key,
   username text unique,
   full_name text,
-  role text check (role in ('seller', 'buyer')) default 'buyer',
+  role text check (role in ('user', 'admin')) default 'user',
   balance numeric default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -33,7 +33,7 @@ security definer set search_path = public
 as $$
 begin
   insert into public.profiles (id, full_name, role)
-  values (new.id, new.raw_user_meta_data->>'full_name', 'buyer');
+  values (new.id, new.raw_user_meta_data->>'full_name', 'user');
   return new;
 end;
 $$;
