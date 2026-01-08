@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { ShoppingCart, Star, Package } from "lucide-react"
+import Link from "next/link"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -58,46 +59,58 @@ export function MarketplaceProductCard({ product, sellerName }: MarketplaceProdu
 
     return (
         <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-sm overflow-hidden flex flex-col h-full hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all bg-white">
-            <div className="relative w-full h-48 border-b-2 border-black bg-gray-100">
-                {imageUrl ? (
-                    <img
-                        src={imageUrl}
-                        alt={product.title}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground font-bold uppercase">
-                        No Preview
-                    </div>
-                )}
-
-                {/* Sale Type Badge */}
-                <div className="absolute top-2 right-2">
-                    {isOneTime ? (
-                        <div className={`px-3 py-1 font-black uppercase text-xs border-2 border-black rounded-sm flex items-center gap-1 ${isSold ? 'bg-gray-400 text-white' : 'bg-yellow-400 text-black'}`}>
-                            <Star className="h-3 w-3" />
-                            {isSold ? 'SOLD' : 'EXCLUSIVE'}
-                        </div>
+            <Link href={`/product/${product.id}`} className="flex-1 flex flex-col group">
+                <div
+                    className="relative w-full h-48 border-b-2 border-black bg-gray-100 overflow-hidden"
+                    onContextMenu={(e) => { e.preventDefault() }}
+                >
+                    {imageUrl ? (
+                        <>
+                            <div className="relative w-full h-full pointer-events-none select-none">
+                                <img
+                                    src={imageUrl}
+                                    alt={product.title}
+                                    className="w-full h-full object-cover"
+                                    draggable={false}
+                                />
+                            </div>
+                            {/* Transparent Shield */}
+                            <div className="absolute inset-0 z-10 bg-transparent" />
+                        </>
                     ) : (
-                        <div className="px-3 py-1 bg-green-400 text-black font-black uppercase text-xs border-2 border-black rounded-sm flex items-center gap-1">
-                            <Package className="h-3 w-3" />
-                            UNLIMITED
+                        <div className="flex items-center justify-center h-full text-muted-foreground font-bold uppercase">
+                            No Preview
                         </div>
                     )}
+
+                    {/* Sale Type Badge */}
+                    <div className="absolute top-2 right-2">
+                        {isOneTime ? (
+                            <div className={`px-3 py-1 font-black uppercase text-xs border-2 border-black rounded-sm flex items-center gap-1 ${isSold ? 'bg-gray-400 text-white' : 'bg-yellow-400 text-black'}`}>
+                                <Star className="h-3 w-3" />
+                                {isSold ? 'SOLD' : 'EXCLUSIVE'}
+                            </div>
+                        ) : (
+                            <div className="px-3 py-1 bg-green-400 text-black font-black uppercase text-xs border-2 border-black rounded-sm flex items-center gap-1">
+                                <Package className="h-3 w-3" />
+                                UNLIMITED
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            <CardHeader className="p-4 pb-2 space-y-1">
-                <h3 className="font-black text-lg uppercase leading-tight line-clamp-2">{product.title}</h3>
-                <p className="text-sm font-bold text-muted-foreground uppercase">{product.category || 'Uncategorized'}</p>
-                <p className="text-xs font-bold text-gray-600">by {sellerName}</p>
-            </CardHeader>
+                <CardHeader className="p-4 pb-2 space-y-1">
+                    <h3 className="font-black text-lg uppercase leading-tight line-clamp-2">{product.title}</h3>
+                    <p className="text-sm font-bold text-muted-foreground uppercase">{product.category || 'Uncategorized'}</p>
+                    <p className="text-xs font-bold text-gray-600">by {sellerName}</p>
+                </CardHeader>
 
-            <CardContent className="p-4 pt-0 flex-grow">
-                <p className="text-2xl font-black text-cyan-600" suppressHydrationWarning>
-                    IDR {product.price.toLocaleString()}
-                </p>
-            </CardContent>
+                <CardContent className="p-4 pt-0 flex-grow">
+                    <div className="text-2xl font-black text-cyan-600" suppressHydrationWarning>
+                        IDR {product.price.toLocaleString()}
+                    </div>
+                </CardContent>
+            </Link>
 
             <CardFooter className="p-4 pt-0">
                 {isSold ? (
@@ -156,6 +169,6 @@ export function MarketplaceProductCard({ product, sellerName }: MarketplaceProdu
                     </AlertDialog>
                 )}
             </CardFooter>
-        </Card>
+        </Card >
     )
 }
