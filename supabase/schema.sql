@@ -50,8 +50,11 @@ create table public.products (
   description text,
   price numeric not null,
   category text,
-  file_url text not null, -- secure path in storage
-  preview_images text[],
+  sale_type text check (sale_type in ('unlimited', 'one_time')) default 'unlimited',
+  sold_to uuid references public.profiles(id),
+  sold_at timestamp with time zone,
+  file_path text not null, -- Path to the actual ZIP file in 'assets' bucket
+  preview_url text, -- URL for the thumbnail/image
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -65,27 +68,49 @@ create policy "Sellers can insert their own products."
   on products for insert
   with check ( auth.uid() = seller_id );
 
--- STORAGE BUCKETS
-insert into storage.buckets (id, name, public) values ('product-files', 'product-files', false);
-insert into storage.buckets (id, name, public) values ('product-previews', 'product-previews', true);
+-- TRANSACTIONS
+create table public.transactions (
+  id uuid default gen_random_uuid() primary key,
+  buyer_id uuid references public.profiles(id) not null,
+  product_id uuid references public.products(id) not null,
+  amount numeric not null,
+  status text check (status in ('pending', 'settlement', 'expire', 'cancel')) default 'pending',
+  midtrans_order_id text unique,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 
--- Storage Policies
--- Product Files: Only seller can upload, only buyer who purchased (future logic) or seller can download.
--- For now, restrict to seller for upload/read.
+alter table public.transactions enable row level security;
+
+create policy "Users can view their own transactions."
+  on transactions for select
+  using ( auth.uid() = buyer_id );
+
+create policy "Users can insert their own transactions."
+  on transactions for insert
+  with check ( auth.uid() = buyer_id );
+
+-- STORAGE BUCKETS
+-- STORAGE BUCKETS
+insert into storage.buckets (id, name, public)
+values ('assets', 'assets', true)
+on conflict (id) do update set public = true;
+
+-- Storage Policies for 'assets' bucket
+-- Folder 'files/': Private, only seller upload/read
 create policy "Seller can upload product files"
   on storage.objects for insert
-  with check ( bucket_id = 'product-files' and auth.uid() = (storage.foldername(name))[1]::uuid );
+  with check ( bucket_id = 'assets' and (storage.foldername(name))[1] = 'files' and auth.uid() = (storage.foldername(name))[2]::uuid );
 
 create policy "Seller can read own product files"
   on storage.objects for select
-  using ( bucket_id = 'product-files' and auth.uid() = (storage.foldername(name))[1]::uuid );
+  using ( bucket_id = 'assets' and (storage.foldername(name))[1] = 'files' and auth.uid() = (storage.foldername(name))[2]::uuid );
 
--- Previews: Public read, Seller upload
+-- Folder 'previews/': Public read, Seller upload
 create policy "Public can view previews"
   on storage.objects for select
-  using ( bucket_id = 'product-previews' );
+  using ( bucket_id = 'assets' and (storage.foldername(name))[1] = 'previews' );
 
 create policy "Seller can upload previews"
   on storage.objects for insert
-  with check ( bucket_id = 'product-previews' and auth.uid() = (storage.foldername(name))[1]::uuid );
+  with check ( bucket_id = 'assets' and (storage.foldername(name))[1] = 'previews' and auth.uid() = (storage.foldername(name))[2]::uuid );
 

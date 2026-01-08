@@ -59,7 +59,7 @@ export function Sidebar() {
                                 variant={isActive ? "default" : "ghost"}
                                 className={`w-full justify-start border-2 rounded-sm uppercase font-bold text-left px-2 mb-1
                                     ${isActive
-                                        ? "bg-primary text-black border-black shadow-neo"
+                                        ? `${isSeller ? 'bg-primary' : 'bg-cyan-400'} text-black border-black shadow-neo`
                                         : "border-transparent hover:border-neo hover:shadow-neo"
                                     }`}
                             >
