@@ -147,10 +147,10 @@ export function SelfieUploadForm() {
                         Aplikasi Anda sedang dalam proses review. Kami akan menghubungi Anda dalam 1-3 hari kerja.
                     </p>
                     <Button
-                        onClick={() => router.push('/onboarding/email-verification')}
+                        onClick={() => router.push('/onboarding/review')}
                         className="bg-cyan-400 text-black font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all rounded-sm h-12 px-8"
                     >
-                        Lanjut ke Verifikasi Email
+                        Lanjut ke Review Data
                     </Button>
                 </CardContent>
             </Card>

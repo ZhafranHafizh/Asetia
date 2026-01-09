@@ -57,9 +57,19 @@ export function ProductUploadForm({ userId }: { userId: string }) {
             serverFormData.append('title', formData.get('title') as string)
             serverFormData.append('description', formData.get('description') as string)
             serverFormData.append('price', formData.get('price') as string)
+            serverFormData.append('category', formData.get('category') as string)
+            serverFormData.append('sale_type', formData.get('sale_type') as string)
             serverFormData.append('seller_id', userId)
             serverFormData.append('file_path', assetData.path)
             serverFormData.append('preview_url', previewData.path) // Store path only
+
+            // Debug logging
+            console.log('📦 Product Upload Data:', {
+                title: formData.get('title'),
+                category: formData.get('category'),
+                sale_type: formData.get('sale_type'),
+                price: formData.get('price')
+            })
 
             const result = await createProduct(serverFormData)
             if (result?.error) {

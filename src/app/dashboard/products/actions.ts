@@ -86,12 +86,22 @@ export async function createProduct(formData: FormData) {
         }
     }
 
+    // Debug logging before database insert
+    console.log('💾 Inserting product to database:', {
+        title,
+        description: description?.substring(0, 50) + '...',
+        price,
+        category,
+        sale_type: saleType,
+        seller_id: sellerId
+    })
+
     const { error } = await supabase.from('products').insert({
         title,
         description,
         price,
         category,
-        sale_type: saleType || 'unlimited',
+        sale_type: saleType, // Remove default fallback - let database handle it or validate first
         file_path: filePath,
         preview_url: previewUrl,
         seller_id: sellerId,

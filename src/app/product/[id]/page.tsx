@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ProductPurchaseButton } from '@/components/product/ProductPurchaseButton'
 import { SecureDownloadButton } from '@/components/product/SecureDownloadButton'
+import { StoreAvatar } from '@/components/shared/StoreAvatar'
 
 export default async function ProductDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params
@@ -21,7 +22,7 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
         .from('products')
         .select(`
             *,
-            seller:profiles!products_seller_id_fkey(full_name)
+            seller:profiles!products_seller_id_fkey(full_name, store_name, store_logo)
         `)
         .eq('id', params.id)
         .single()
@@ -166,14 +167,16 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
                         </div>
 
                         {/* Seller Info */}
-                        <Card className="border-2 border-black rounded-sm p-4 bg-white">
+                        <Card className="border-2 border-black shadow-neo rounded-sm p-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 bg-gradient-to-br from-cyan-500 to-blue-600 border-2 border-black rounded-sm flex items-center justify-center">
-                                    <User className="h-6 w-6 text-white" />
-                                </div>
+                                <StoreAvatar
+                                    storeName={product.seller?.store_name || product.seller?.full_name || 'Seller'}
+                                    logoUrl={product.seller?.store_logo ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/assets/${product.seller.store_logo}` : null}
+                                    size="lg"
+                                />
                                 <div>
                                     <p className="text-xs font-bold text-gray-600 uppercase">Sold By</p>
-                                    <p className="font-black text-lg">{product.seller?.full_name || 'Seller'}</p>
+                                    <p className="font-black text-lg">{product.seller?.store_name || product.seller?.full_name || 'Seller'}</p>
                                 </div>
                             </div>
                         </Card>

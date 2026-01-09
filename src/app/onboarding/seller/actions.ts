@@ -15,6 +15,8 @@ export async function submitSellerOnboarding(formData: FormData) {
 
     const storeName = formData.get('store_name') as string
     const storeBio = formData.get('store_bio') as string
+    const phoneNumber = formData.get('phone_number') as string
+    const homeAddress = formData.get('home_address') as string
 
     // Validate inputs
     if (!storeName || storeName.trim().length < 3) {
@@ -23,6 +25,19 @@ export async function submitSellerOnboarding(formData: FormData) {
 
     if (!storeBio || storeBio.trim().length < 10) {
         return { error: 'Store bio must be at least 10 characters' }
+    }
+
+    if (!phoneNumber || phoneNumber.trim().length < 9) {
+        return { error: 'Phone number must be at least 9 digits' }
+    }
+
+    if (!homeAddress || homeAddress.trim().length < 20) {
+        return { error: 'Home address must be at least 20 characters' }
+    }
+
+    // Validate phone number format (numbers only)
+    if (!/^\d+$/.test(phoneNumber.trim())) {
+        return { error: 'Phone number must contain only numbers' }
     }
 
     // Check if store name is already taken
@@ -42,6 +57,8 @@ export async function submitSellerOnboarding(formData: FormData) {
         .update({
             store_name: storeName.trim(),
             store_bio: storeBio.trim(),
+            phone_number: '+62' + phoneNumber.trim(),
+            home_address: homeAddress.trim(),
             verification_status: 'pending'
         })
         .eq('id', user.id)

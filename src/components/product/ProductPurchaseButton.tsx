@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ShoppingCart, Star, Loader2 } from 'lucide-react'
+import { ShoppingCart, Star, Loader2, CheckCircle } from 'lucide-react'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -13,7 +13,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { createTransaction } from '@/app/checkout/actions'
+import { addToCart } from '@/app/cart/actions'
 
 interface ProductPurchaseButtonProps {
     productId: string
@@ -33,22 +33,31 @@ export function ProductPurchaseButton({
     isAuthenticated
 }: ProductPurchaseButtonProps) {
     const router = useRouter()
-    const [isPurchasing, setIsPurchasing] = useState(false)
+    const [isAdding, setIsAdding] = useState(false)
+    const [showSuccess, setShowSuccess] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    const handlePurchase = async () => {
+    const handleAddToCart = async () => {
         if (!isAuthenticated) {
             router.push('/login')
             return
         }
 
-        setIsPurchasing(true)
-        const result = await createTransaction(productId, productPrice)
+        setIsAdding(true)
+        setError(null)
+
+        const result = await addToCart(productId)
 
         if (result.error) {
-            alert('Failed to create transaction: ' + result.error)
-            setIsPurchasing(false)
-        } else if (result.transactionId) {
-            router.push(`/checkout/${result.transactionId}`)
+            setError(result.error)
+            setIsAdding(false)
+        } else {
+            setShowSuccess(true)
+            setIsAdding(false)
+            // Refresh to update cart count
+            router.refresh()
+            // Hide success message after 2 seconds
+            setTimeout(() => setShowSuccess(false), 2000)
         }
     }
 
@@ -67,15 +76,33 @@ export function ProductPurchaseButton({
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button className="w-full bg-cyan-500 text-white font-black border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all rounded-sm h-16 text-lg uppercase">
-                    <ShoppingCart className="mr-2 h-6 w-6" />
-                    Buy Now
+                <Button
+                    className="w-full bg-cyan-500 text-white font-black border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all rounded-sm h-16 text-lg uppercase"
+                    disabled={showSuccess}
+                >
+                    {showSuccess ? (
+                        <>
+                            <CheckCircle className="mr-2 h-6 w-6" />
+                            Added to Cart!
+                        </>
+                    ) : (
+                        <>
+                            <ShoppingCart className="mr-2 h-6 w-6" />
+                            Add to Cart
+                        </>
+                    )}
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-sm max-w-md">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="font-black uppercase text-2xl">Confirm Purchase</AlertDialogTitle>
+                    <AlertDialogTitle className="font-black uppercase text-2xl">Add to Cart</AlertDialogTitle>
                     <div className="space-y-4 pt-4">
+                        {error && (
+                            <div className="bg-red-100 border-2 border-red-600 p-3 rounded-sm">
+                                <p className="text-sm font-black text-red-900">{error}</p>
+                            </div>
+                        )}
+
                         <div className="border-2 border-black p-4 rounded-sm bg-gray-50">
                             <p className="font-bold text-black mb-2">Product:</p>
                             <p className="text-lg font-black text-black">{productTitle}</p>
@@ -90,7 +117,7 @@ export function ProductPurchaseButton({
                             )}
                         </div>
                         <div className="border-2 border-black p-4 rounded-sm bg-cyan-50">
-                            <p className="font-bold text-black mb-2">Total Payment:</p>
+                            <p className="font-bold text-black mb-2">Price:</p>
                             <div className="text-2xl font-black text-cyan-600" suppressHydrationWarning>
                                 IDR {productPrice.toLocaleString()}
                             </div>
@@ -102,17 +129,17 @@ export function ProductPurchaseButton({
                         Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
-                        onClick={handlePurchase}
-                        disabled={isPurchasing}
+                        onClick={handleAddToCart}
+                        disabled={isAdding}
                         className="flex-1 bg-cyan-500 text-white border-2 border-black rounded-sm font-bold uppercase hover:bg-cyan-600"
                     >
-                        {isPurchasing ? (
+                        {isAdding ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Processing...
+                                Adding...
                             </>
                         ) : (
-                            'Confirm'
+                            'Add to Cart'
                         )}
                     </AlertDialogAction>
                 </div>

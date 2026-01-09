@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, ShoppingBag, DollarSign, Package, Search } from 'lucide-react'
+import { Plus, ShoppingBag, DollarSign, Package, Search, Settings } from 'lucide-react'
 import { Input } from "@/components/ui/input"
 import Link from 'next/link'
 import { ProductCard } from '@/components/dashboard/ProductCard'
@@ -108,7 +108,7 @@ export default async function DashboardPage(props: {
             .from('products')
             .select(`
                 *,
-                profiles!products_seller_id_fkey(full_name)
+                profiles!products_seller_id_fkey(full_name, store_name)
             `)
             .order('created_at', { ascending: false })
 

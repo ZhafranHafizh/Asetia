@@ -9,7 +9,11 @@ export function RoleSwitcher() {
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
-    const mode = searchParams.get('mode') || 'buyer'
+
+    // Detect mode from query params OR from path (e.g., /dashboard/seller/*)
+    const modeFromParams = searchParams.get('mode')
+    const isSellerPath = pathname.startsWith('/dashboard/seller') || pathname.startsWith('/dashboard/products') || pathname.startsWith('/dashboard/earnings')
+    const mode = modeFromParams || (isSellerPath ? 'seller' : 'buyer')
     const isSeller = mode === 'seller'
 
     const isLocked = pathname === '/dashboard/products/new'
@@ -17,9 +21,15 @@ export function RoleSwitcher() {
     const handleToggle = (checked: boolean) => {
         if (isLocked) return
         const newMode = checked ? 'seller' : 'buyer'
-        const params = new URLSearchParams(searchParams.toString())
-        params.set('mode', newMode)
-        router.push(`?${params.toString()}`)
+
+        // If we're on a seller-specific path, redirect to dashboard with mode
+        if (pathname.startsWith('/dashboard/seller')) {
+            router.push(`/dashboard?mode=${newMode}`)
+        } else {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('mode', newMode)
+            router.push(`?${params.toString()}`)
+        }
     }
 
     return (

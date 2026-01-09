@@ -21,7 +21,11 @@ export function Sidebar() {
     const supabase = createClient()
     const pathName = usePathname()
     const searchParams = useSearchParams()
-    const mode = searchParams.get('mode') || 'buyer'
+
+    // Detect mode from query params OR from path (e.g., /dashboard/seller/*)
+    const modeFromParams = searchParams.get('mode')
+    const isSellerPath = pathName.startsWith('/dashboard/seller') || pathName.startsWith('/dashboard/products') || pathName.startsWith('/dashboard/earnings')
+    const mode = modeFromParams || (isSellerPath ? 'seller' : 'buyer')
     const isSeller = mode === 'seller'
 
     const handleLogout = async () => {
@@ -34,7 +38,7 @@ export function Sidebar() {
             { name: 'Dashboard', href: '/dashboard?mode=seller', icon: LayoutDashboard },
             { name: 'My Products', href: '/dashboard/products?mode=seller', icon: Package },
             { name: 'Earnings', href: '/dashboard/earnings?mode=seller', icon: DollarSign },
-            { name: 'Settings', href: '/dashboard/settings?mode=seller', icon: Settings },
+            { name: 'Settings', href: '/dashboard/seller/settings', icon: Settings },
         ]
         : [
             { name: 'Marketplace', href: '/dashboard', icon: Home },

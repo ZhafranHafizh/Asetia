@@ -35,9 +35,9 @@ export default async function VerificationPage() {
     // Check if selfie is already uploaded
     const hasSelfie = !!profile.selfie_path
 
-    // If selfie uploaded, redirect to email verification
+    // If selfie uploaded, redirect to review page
     if (hasSelfie && profile.verification_status === 'pending') {
-        redirect('/onboarding/email-verification')
+        redirect('/onboarding/review')
     }
 
     return (

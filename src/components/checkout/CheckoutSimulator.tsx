@@ -2,16 +2,18 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { simulatePayment } from "@/app/checkout/actions"
+import { simulatePayment, simulateBulkPayment } from "@/app/checkout/actions"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 
 interface CheckoutSimulatorProps {
     transactionId: string
+    transactionIds?: string[]
+    isBulk?: boolean
 }
 
-export function CheckoutSimulator({ transactionId }: CheckoutSimulatorProps) {
+export function CheckoutSimulator({ transactionId, transactionIds, isBulk }: CheckoutSimulatorProps) {
     const router = useRouter()
     const [isProcessing, setIsProcessing] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -20,7 +22,12 @@ export function CheckoutSimulator({ transactionId }: CheckoutSimulatorProps) {
         setIsProcessing(true)
         setError(null)
 
-        const result = await simulatePayment(transactionId)
+        let result
+        if (isBulk && transactionIds && transactionIds.length > 0) {
+            result = await simulateBulkPayment(transactionIds)
+        } else {
+            result = await simulatePayment(transactionId)
+        }
 
         if (result.error) {
             setError(result.error)
@@ -65,6 +72,7 @@ export function CheckoutSimulator({ transactionId }: CheckoutSimulatorProps) {
                     </p>
                     <p className="text-sm font-medium text-gray-700 mt-2">
                         Midtrans integration is not yet active. Click the button below to simulate a successful payment.
+                        {isBulk && <span className="font-bold"> This will process all {transactionIds?.length} items in your order.</span>}
                     </p>
                 </div>
 

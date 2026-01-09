@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+import { CartIcon } from '@/components/cart/CartIcon'
 
 export async function PublicNavbar() {
     const supabase = await createClient()
@@ -16,6 +17,7 @@ export async function PublicNavbar() {
                 <div className="flex items-center gap-4">
                     {user ? (
                         <>
+                            <CartIcon />
                             <Link href="/dashboard">
                                 <Button className="bg-primary text-black font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all rounded-sm uppercase">
                                     Dashboard

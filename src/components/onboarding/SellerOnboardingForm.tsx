@@ -111,6 +111,53 @@ export function SellerOnboardingForm() {
                         </p>
                     </div>
 
+                    {/* Phone Number */}
+                    <div className="space-y-2">
+                        <Label htmlFor="phone_number" className="font-black uppercase text-sm">
+                            Phone Number *
+                        </Label>
+                        <div className="flex gap-2">
+                            <div className="w-20 border-2 border-black rounded-sm font-bold h-12 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center bg-gray-100">
+                                +62
+                            </div>
+                            <Input
+                                id="phone_number"
+                                name="phone_number"
+                                type="tel"
+                                required
+                                minLength={9}
+                                maxLength={13}
+                                placeholder="812345678"
+                                className="flex-1 border-2 border-black rounded-sm font-medium h-12 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0"
+                                disabled={isLoading}
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Nomor telepon untuk keperluan verifikasi dan komunikasi
+                        </p>
+                    </div>
+
+                    {/* Home Address */}
+                    <div className="space-y-2">
+                        <Label htmlFor="home_address" className="font-black uppercase text-sm">
+                            Home Address *
+                        </Label>
+                        <Textarea
+                            id="home_address"
+                            name="home_address"
+                            required
+                            minLength={20}
+                            maxLength={300}
+                            rows={4}
+                            placeholder="Jl. Contoh No. 123, RT/RW 01/02, Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos"
+                            className="border-2 border-black rounded-sm font-medium shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 resize-none"
+                            disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Alamat lengkap untuk keperluan verifikasi (min. 20 karakter)
+                        </p>
+                    </div>
+
                     {/* Error Message */}
                     {error && (
                         <div className="p-4 border-2 border-red-500 bg-red-50 rounded-sm">

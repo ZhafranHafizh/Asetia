@@ -26,6 +26,7 @@ interface Product {
     category?: string
     profiles?: {
         full_name: string
+        store_name?: string
     }
 }
 
@@ -45,7 +46,7 @@ export function MarketplaceGrid({ products }: MarketplaceGridProps) {
                         <MarketplaceProductCard
                             key={product.id}
                             product={product}
-                            sellerName={product.profiles?.full_name || 'Unknown Seller'}
+                            sellerName={product.profiles?.store_name || product.profiles?.full_name || 'Unknown Seller'}
                         />
                     ))}
                 </div>
