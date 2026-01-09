@@ -18,50 +18,68 @@ export default async function CheckoutPage(props: {
         redirect('/login')
     }
 
-    // Check if this is a bulk transaction
     const isBulk = searchParams.bulk === 'true'
-    const transactionIds = searchParams.ids ?
-        (typeof searchParams.ids === 'string' ? searchParams.ids.split(',') : searchParams.ids) :
-        [params.id]
+    const transactionId = params.id
 
-    // Fetch transaction(s) with product details
-    const { data: transactions, error } = await supabase
+    // Fetch transaction with product details AND transaction items
+    // We fetch items AND product:products named 'parent_product' (for legacy) to avoid conflict? 
+    // Or just 'product:products' which will be null for cart.
+    const { data: transaction, error } = await supabase
         .from('transactions')
         .select(`
             *,
-            product:products(*)
+            product:products(*),
+            transaction_items(
+                id,
+                price_at_purchase,
+                product:products(*)
+            )
         `)
-        .in('id', transactionIds)
+        .eq('id', transactionId)
         .eq('buyer_id', user.id)
+        .single()
 
-    if (error || !transactions || transactions.length === 0) {
+    if (error || !transaction) {
         console.error('Transaction fetch error:', error)
         redirect('/dashboard')
     }
 
-    const mainTransaction = transactions[0]
-
     // If already settled, redirect to purchases
-    if (mainTransaction.status === 'settlement') {
+    if (transaction.status === 'settlement') {
         redirect('/dashboard/purchases?success=true')
     }
 
-    // Calculate total amount
-    const totalAmount = transactions.reduce((sum, t) => sum + Number(t.amount), 0)
+    // Normalize items for display
+    let displayItems: any[] = []
 
-    // Get unique sellers (in case of multiple sellers in cart)
-    const uniqueSellerIds = [...new Set(transactions.map(t => t.product.seller_id))]
+    if (transaction.transaction_items && transaction.transaction_items.length > 0) {
+        // Cart Flow
+        displayItems = transaction.transaction_items.map((item: any) => ({
+            id: item.id,
+            product: item.product,
+            amount: item.price_at_purchase
+        }))
+    } else if (transaction.product) {
+        // Legacy/Single Flow
+        displayItems = [{
+            id: transaction.id,
+            product: transaction.product,
+            amount: transaction.amount
+        }]
+    }
 
-    console.log('Unique seller IDs:', uniqueSellerIds)
+    const totalAmount = Number(transaction.amount)
 
-    // Fetch seller profiles (email is in auth.users, not profiles)
-    const { data: sellers, error: sellersError } = await supabase
+    // Get unique sellers
+    const uniqueSellerIds = [...new Set(displayItems.map(t => t.product?.seller_id).filter(Boolean))]
+
+    // Fetch seller profiles
+    const { data: sellers } = await supabase
         .from('profiles')
         .select('id, full_name, store_name, store_logo')
-        .in('id', uniqueSellerIds)
+        .in('id', uniqueSellerIds as string[])
 
-    console.log('Sellers data:', sellers)
-    console.log('Sellers error:', sellersError)
+    const sellerMap = new Map(sellers?.map(s => [s.id, s]))
 
     // Fetch buyer profile
     const { data: buyer } = await supabase
@@ -71,8 +89,8 @@ export default async function CheckoutPage(props: {
         .single()
 
     // Generate invoice number
-    const createdDate = new Date(mainTransaction.created_at)
-    const invoiceNumber = `INV/${createdDate.getFullYear()}/${String(createdDate.getMonth() + 1).padStart(2, '0')}/${mainTransaction.id.slice(0, 8).toUpperCase()}`
+    const createdDate = new Date(transaction.created_at)
+    const invoiceNumber = `INV/${createdDate.getFullYear()}/${String(createdDate.getMonth() + 1).padStart(2, '0')}/${transaction.id.slice(0, 8).toUpperCase()}`
     const formattedDate = createdDate.toLocaleDateString('id-ID', {
         year: 'numeric',
         month: 'long',
@@ -98,12 +116,12 @@ export default async function CheckoutPage(props: {
                             <div className="text-right">
                                 <div className="inline-block px-4 py-2 bg-yellow-400 border-3 border-black rounded-sm mb-2">
                                     <p className="text-xs font-black uppercase text-gray-700">Status</p>
-                                    <p className="text-2xl font-black uppercase">{mainTransaction.status}</p>
+                                    <p className="text-2xl font-black uppercase">{transaction.status}</p>
                                 </div>
-                                {isBulk && (
+                                {displayItems.length > 1 && (
                                     <div className="mt-2 inline-block px-3 py-1 bg-cyan-100 border-2 border-black rounded-sm">
                                         <p className="text-xs font-black uppercase">
-                                            {transactions.length} Items
+                                            {displayItems.length} Items
                                         </p>
                                     </div>
                                 )}
@@ -141,7 +159,7 @@ export default async function CheckoutPage(props: {
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-gray-600">Transaction ID</p>
-                                        <p className="font-mono text-sm font-bold">{mainTransaction.id.slice(0, 16)}...</p>
+                                        <p className="font-mono text-sm font-bold">{transaction.id.slice(0, 16)}...</p>
                                     </div>
                                 </div>
                             </div>
@@ -199,19 +217,19 @@ export default async function CheckoutPage(props: {
                                     <div className="col-span-3 p-4 text-right">Price</div>
                                 </div>
                                 {/* Table Body */}
-                                {transactions.map((transaction, index) => (
-                                    <div key={transaction.id} className={`grid grid-cols-12 bg-white ${index < transactions.length - 1 ? 'border-b-2 border-gray-200' : ''}`}>
+                                {displayItems.map((item, index) => (
+                                    <div key={item.id} className={`grid grid-cols-12 bg-white ${index < displayItems.length - 1 ? 'border-b-2 border-gray-200' : ''}`}>
                                         <div className="col-span-6 p-4 border-r-2 border-black">
-                                            <p className="font-black text-lg">{transaction.product.title}</p>
+                                            <p className="font-black text-lg">{item.product?.title || 'Unknown Product'}</p>
                                         </div>
                                         <div className="col-span-3 p-4 border-r-2 border-black">
                                             <span className="inline-block px-2 py-1 bg-gray-200 border-2 border-black rounded-sm font-bold text-xs uppercase">
-                                                {transaction.product.category || 'Digital Asset'}
+                                                {item.product?.category || 'Digital Asset'}
                                             </span>
                                         </div>
                                         <div className="col-span-3 p-4 text-right">
                                             <div className="font-black text-xl" suppressHydrationWarning>
-                                                IDR {Number(transaction.amount).toLocaleString()}
+                                                IDR {Number(item.amount).toLocaleString()}
                                             </div>
                                         </div>
                                     </div>
@@ -219,7 +237,7 @@ export default async function CheckoutPage(props: {
                                 {/* Total Row */}
                                 <div className="grid grid-cols-12 bg-cyan-500 border-t-4 border-black">
                                     <div className="col-span-9 p-4 font-black uppercase text-white text-lg">
-                                        Total Amount {isBulk && `(${transactions.length} items)`}
+                                        Total Amount {isBulk && `(${displayItems.length} items)`}
                                     </div>
                                     <div className="col-span-3 p-4 text-right">
                                         <div className="font-black text-2xl text-white" suppressHydrationWarning>
@@ -232,8 +250,8 @@ export default async function CheckoutPage(props: {
 
                         {/* Payment Action */}
                         <CheckoutSimulator
-                            transactionId={mainTransaction.id}
-                            transactionIds={isBulk ? transactionIds : undefined}
+                            transactionId={transaction.id}
+                            transactionIds={[transaction.id]} // Pass singular ID array for compatibility
                             isBulk={isBulk}
                         />
 

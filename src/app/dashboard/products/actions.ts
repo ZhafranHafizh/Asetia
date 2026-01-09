@@ -13,6 +13,10 @@ export async function createProduct(formData: FormData) {
     const price = parseFloat(formData.get('price') as string)
     const category = formData.get('category') as string
     const saleType = formData.get('sale_type') as string
+    const downloadPolicy = (formData.get('download_policy') as string) || 'unlimited'
+    const downloadDurationHours = formData.get('download_duration_hours') ?
+        parseInt(formData.get('download_duration_hours') as string) : null
+
     // File inputs might need different handling if they were uploaded directly to storage 
     // but here we are receiving form data. If the file was uploaded client-side, 
     // we can't process it here unless we change the upload flow.
@@ -32,6 +36,11 @@ export async function createProduct(formData: FormData) {
 
     if (!title || !price || !filePath || !sellerId) {
         return { error: 'Missing required fields' }
+    }
+
+    // Validate download policy
+    if (downloadPolicy === 'timed' && (!downloadDurationHours || downloadDurationHours <= 0)) {
+        return { error: 'Duration is required for timed download policy' }
     }
 
     // If previewUrl is provided (uploaded via client), we should process it if it's a new upload.
@@ -101,7 +110,9 @@ export async function createProduct(formData: FormData) {
         description,
         price,
         category,
-        sale_type: saleType, // Remove default fallback - let database handle it or validate first
+        sale_type: saleType,
+        download_policy: downloadPolicy,
+        download_duration_hours: downloadDurationHours,
         file_path: filePath,
         preview_url: previewUrl,
         seller_id: sellerId,
@@ -129,6 +140,14 @@ export async function updateProduct(productId: string, formData: FormData) {
     const price = formData.get('price') as string
     const category = formData.get('category') as string
     const saleType = formData.get('sale_type') as string
+    const downloadPolicy = (formData.get('download_policy') as string) || 'unlimited'
+    const downloadDurationHours = formData.get('download_duration_hours') ?
+        parseInt(formData.get('download_duration_hours') as string) : null
+
+    // Validate download policy
+    if (downloadPolicy === 'timed' && (!downloadDurationHours || downloadDurationHours <= 0)) {
+        return { error: 'Duration is required for timed download policy' }
+    }
 
     const { error } = await supabase
         .from('products')
@@ -138,6 +157,8 @@ export async function updateProduct(productId: string, formData: FormData) {
             price: parseFloat(price),
             category,
             sale_type: saleType,
+            download_policy: downloadPolicy,
+            download_duration_hours: downloadDurationHours,
         })
         .eq('id', productId)
         .eq('seller_id', user.id)

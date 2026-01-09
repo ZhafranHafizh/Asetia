@@ -3,11 +3,12 @@
 interface StoreAvatarProps {
     storeName: string
     logoUrl?: string | null
-    size?: 'sm' | 'md' | 'lg' | 'xl'
+    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
     className?: string
 }
 
 const sizeClasses = {
+    xs: 'h-8 w-8 text-xs',
     sm: 'h-10 w-10 text-lg',
     md: 'h-12 w-12 text-xl',
     lg: 'h-16 w-16 text-3xl',

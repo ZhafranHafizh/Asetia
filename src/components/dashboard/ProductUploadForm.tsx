@@ -59,6 +59,14 @@ export function ProductUploadForm({ userId }: { userId: string }) {
             serverFormData.append('price', formData.get('price') as string)
             serverFormData.append('category', formData.get('category') as string)
             serverFormData.append('sale_type', formData.get('sale_type') as string)
+            serverFormData.append('download_policy', formData.get('download_policy') as string)
+
+            // Only add duration if timed policy is selected
+            const downloadPolicy = formData.get('download_policy') as string
+            if (downloadPolicy === 'timed') {
+                serverFormData.append('download_duration_hours', formData.get('download_duration_hours') as string)
+            }
+
             serverFormData.append('seller_id', userId)
             serverFormData.append('file_path', assetData.path)
             serverFormData.append('preview_url', previewData.path) // Store path only
@@ -153,6 +161,76 @@ export function ProductUploadForm({ userId }: { userId: string }) {
                                 <div>
                                     <p className="font-black uppercase">One-Time Sale (Exclusive)</p>
                                     <p className="text-sm font-medium text-gray-600">Only one buyer can purchase this asset</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label className="font-bold uppercase mb-3 block">Download Policy</Label>
+                        <div className="space-y-3">
+                            <label className="flex items-start gap-3 p-4 border-2 border-black rounded-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="download_policy"
+                                    value="unlimited"
+                                    defaultChecked
+                                    className="mt-1"
+                                    onChange={() => {
+                                        const durationInput = document.getElementById('download_duration') as HTMLInputElement
+                                        if (durationInput) durationInput.disabled = true
+                                    }}
+                                />
+                                <div>
+                                    <p className="font-black uppercase">Unlimited Access</p>
+                                    <p className="text-sm font-medium text-gray-600">Buyers can download anytime, forever</p>
+                                </div>
+                            </label>
+                            <label className="flex items-start gap-3 p-4 border-2 border-black rounded-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="download_policy"
+                                    value="once"
+                                    className="mt-1"
+                                    onChange={() => {
+                                        const durationInput = document.getElementById('download_duration') as HTMLInputElement
+                                        if (durationInput) durationInput.disabled = true
+                                    }}
+                                />
+                                <div>
+                                    <p className="font-black uppercase">One-Time Download</p>
+                                    <p className="text-sm font-medium text-gray-600">Buyers can only download once. Choose carefully!</p>
+                                </div>
+                            </label>
+                            <label className="flex items-start gap-3 p-4 border-2 border-black rounded-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="download_policy"
+                                    value="timed"
+                                    className="mt-1"
+                                    onChange={() => {
+                                        const durationInput = document.getElementById('download_duration') as HTMLInputElement
+                                        if (durationInput) durationInput.disabled = false
+                                    }}
+                                />
+                                <div className="flex-1">
+                                    <p className="font-black uppercase">Timed Access</p>
+                                    <p className="text-sm font-medium text-gray-600 mb-3">Buyers have limited time to download after payment</p>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="download_duration" className="text-xs font-bold">Duration (hours)</Label>
+                                        <Input
+                                            id="download_duration"
+                                            name="download_duration_hours"
+                                            type="number"
+                                            min="1"
+                                            max="720"
+                                            defaultValue="24"
+                                            disabled
+                                            className="border-2 border-neo rounded-sm"
+                                            placeholder="24"
+                                        />
+                                        <p className="text-xs text-gray-500">Common: 24h (1 day), 72h (3 days), 168h (7 days)</p>
+                                    </div>
                                 </div>
                             </label>
                         </div>

@@ -20,6 +20,7 @@ import { createTransaction } from "@/app/checkout/actions"
 import { addToCart } from "@/app/cart/actions"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { DownloadPolicyBadge } from "@/components/downloads/DownloadPolicyBadge"
 
 interface MarketplaceProductCardProps {
     product: {
@@ -30,6 +31,8 @@ interface MarketplaceProductCardProps {
         category?: string
         sale_type?: string
         sold_to?: string
+        download_policy?: 'unlimited' | 'once' | 'timed'
+        download_duration_hours?: number
     }
     sellerName: string
 }
@@ -125,6 +128,12 @@ export function MarketplaceProductCard({ product, sellerName }: MarketplaceProdu
                     <h3 className="font-black text-lg uppercase leading-tight line-clamp-2">{product.title}</h3>
                     <p className="text-sm font-bold text-muted-foreground uppercase">{product.category || 'Uncategorized'}</p>
                     <p className="text-xs font-bold text-gray-600">by {sellerName}</p>
+                    <div className="pt-2">
+                        <DownloadPolicyBadge
+                            policy={product.download_policy || 'unlimited'}
+                            duration={product.download_duration_hours}
+                        />
+                    </div>
                 </CardHeader>
 
                 <CardContent className="p-4 pt-0 flex-grow">

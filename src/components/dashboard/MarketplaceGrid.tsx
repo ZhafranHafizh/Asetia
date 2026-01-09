@@ -24,6 +24,8 @@ interface Product {
     price: number
     preview_url: string
     category?: string
+    download_policy?: 'unlimited' | 'once' | 'timed'
+    download_duration_hours?: number
     profiles?: {
         full_name: string
         store_name?: string
