@@ -10,7 +10,7 @@ export function RoleSwitcher() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Detect mode from query params OR from path (e.g., /dashboard/seller/*)
+    // Detect mode from query params OR from path
     const modeFromParams = searchParams.get('mode')
     const isSellerPath = pathname.startsWith('/dashboard/seller') || pathname.startsWith('/dashboard/products') || pathname.startsWith('/dashboard/earnings')
     const mode = modeFromParams || (isSellerPath ? 'seller' : 'buyer')
@@ -18,17 +18,38 @@ export function RoleSwitcher() {
 
     const isLocked = pathname === '/dashboard/products/new'
 
+    // Define buyer-only and seller-only routes
+    const buyerOnlyRoutes = ['/dashboard/purchases', '/dashboard/cart']
+    const sellerOnlyRoutes = ['/dashboard/seller', '/dashboard/products', '/dashboard/earnings']
+
+    const isBuyerOnlyRoute = buyerOnlyRoutes.some(route => pathname.startsWith(route))
+    const isSellerOnlyRoute = sellerOnlyRoutes.some(route => pathname.startsWith(route))
+
     const handleToggle = (checked: boolean) => {
         if (isLocked) return
         const newMode = checked ? 'seller' : 'buyer'
 
-        // If we're on a seller-specific path, redirect to dashboard with mode
-        if (pathname.startsWith('/dashboard/seller')) {
-            router.push(`/dashboard?mode=${newMode}`)
+        // Automatic redirection based on mode and current route
+        if (newMode === 'seller') {
+            // Switching to Seller Mode - redirect to products page
+            if (isBuyerOnlyRoute || pathname === '/dashboard') {
+                router.push('/dashboard/products')
+            } else {
+                // Stay on current page with seller mode
+                const params = new URLSearchParams(searchParams.toString())
+                params.set('mode', 'seller')
+                router.push(`${pathname}?${params.toString()}`)
+            }
         } else {
-            const params = new URLSearchParams(searchParams.toString())
-            params.set('mode', newMode)
-            router.push(`?${params.toString()}`)
+            // Switching to Buyer Mode - redirect to main dashboard
+            if (isSellerOnlyRoute) {
+                router.push('/dashboard')
+            } else {
+                // Stay on current page with buyer mode
+                const params = new URLSearchParams(searchParams.toString())
+                params.set('mode', 'buyer')
+                router.push(`${pathname}?${params.toString()}`)
+            }
         }
     }
 
