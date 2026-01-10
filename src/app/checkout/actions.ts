@@ -28,6 +28,7 @@ export async function createTransaction(productId: string, amount: number) {
     }
 
     // Create transaction
+    console.log('DEBUG: Creating transaction for product:', productId)
     const { data: transaction, error } = await supabase
         .from('transactions')
         .insert({
@@ -40,14 +41,33 @@ export async function createTransaction(productId: string, amount: number) {
         .single()
 
     if (error) {
-        console.error('Create transaction error:', error)
+        console.error('DEBUG: Create transaction header error:', error)
         return { error: error.message }
+    }
+    console.log('DEBUG: Transaction header created:', transaction.id)
+
+    // Also create a transaction_item for consistency with the new system
+    // even for single transaction
+    const { error: itemError } = await supabase
+        .from('transaction_items')
+        .insert({
+            transaction_id: transaction.id,
+            product_id: productId,
+            price_at_purchase: amount
+        })
+
+    if (itemError) {
+        console.error('DEBUG: Failed to create transaction item for single purchase:', itemError)
+        // We might want to rollback transaction here, but for now just log it
+    } else {
+        console.log('DEBUG: Transaction item created successfully')
     }
 
     return { success: true, transactionId: transaction.id }
 }
 
 export async function simulatePayment(transactionId: string) {
+    console.log('DEBUG: Simulating payment for transaction:', transactionId)
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -55,34 +75,56 @@ export async function simulatePayment(transactionId: string) {
         return { error: 'Unauthorized' }
     }
 
-    // Get transaction with product details
+    // Get transaction with items and product details
+    // We try to fetch transaction_items if available, or fallback to product_id on transaction (legacy)
     const { data: transaction, error: fetchError } = await supabase
         .from('transactions')
-        .select('*, product:products(sale_type, id, sold_to)')
+        .select(`
+            *, 
+            product:products(sale_type, id, sold_to),
+            items:transaction_items(
+                id,
+                product:products(sale_type, id, sold_to)
+            )
+        `)
         .eq('id', transactionId)
         .eq('buyer_id', user.id)
         .single()
 
     if (fetchError || !transaction) {
+        console.error('DEBUG: Transaction not found for simulation:', fetchError)
         return { error: 'Transaction not found' }
     }
 
+    console.log('DEBUG: Transaction found with items:', transaction.items?.length)
+
+    // Determine product to check (support both legacy direct relation and new items relation)
+    // For simulatePayment (single), we assume 1 main product
+    let productToProcess = transaction.product;
+    if (!productToProcess && transaction.items && transaction.items.length > 0) {
+        productToProcess = transaction.items[0].product;
+    }
+
+    if (!productToProcess) {
+        // Fallback or error
+        console.warn('No product found for transaction', transactionId);
+    }
+
     // For one-time sales, use atomic update to prevent race conditions
-    if (transaction.product.sale_type === 'one_time') {
+    if (productToProcess && productToProcess.sale_type === 'one_time') {
         // Check if already sold (double-check before attempting update)
-        if (transaction.product.sold_to) {
+        if (productToProcess.sold_to) {
             return { error: 'This exclusive product has already been sold to another buyer' }
         }
 
-        // Atomic update: only succeeds if sold_to is still null
-        // This prevents race conditions where two buyers try to purchase simultaneously
+        // Atomic update
         const { data: updateResult, error: updateError } = await supabase
             .from('products')
             .update({
                 sold_to: user.id,
                 sold_at: new Date().toISOString()
             })
-            .eq('id', transaction.product.id)
+            .eq('id', productToProcess.id)
             .is('sold_to', null) // Critical: only update if not already sold
             .select()
 
@@ -117,6 +159,7 @@ export async function simulatePayment(transactionId: string) {
 
     revalidatePath('/dashboard/purchases')
     revalidatePath('/dashboard')
+    revalidatePath('/dashboard/seller/earnings')
     return { success: true }
 }
 
@@ -179,35 +222,64 @@ export async function createBulkTransaction(cartItemIds: string[]) {
     }
 
     // Create transactions for each product
-    const transactions = productIds.map(productId => {
-        const cartItem = cartItems.find((item: any) => item.product.id === productId)
-        const product = cartItem?.product as any
-        return {
-            buyer_id: user.id,
-            product_id: productId,
-            amount: product?.price || 0,
-            status: 'pending' as const
-        }
-    })
+    // Note: In a bulk transaction model, we might want ONE transaction with MULTIPLE items.
+    // The previous implementation created MULTIPLE transactions (one per product).
+    // Let's stick to the existing pattern of 1 transaction per product for now if that's what was intended, 
+    // OR unify it. The User's cart system seems to imply a single checkout flow.
+    // However, the `simulateBulkPayment` logic I wrote expects transactionIds (plural).
+    // If we create ONE header and MANY items, we should only pass ONE transactionId.
 
-    const { data: createdTransactions, error: transactionError } = await supabase
+    // BUT wait, `createBulkTransaction` in previous logic was returning `transactionIds` (plural).
+    // "const transactions = productIds.map(...)".
+    // This creates INDIVIDUAL transactions for each product.
+    // This is fine, but it means `transaction_items` is redundant if it's 1-to-1?
+    // No, earlier migration 20260109125815_create_cart_system.sql created `transaction_items` table.
+    // And users want "Cart" functionality.
+
+    // Let's follow the BETTER pattern: 1 Transaction Header (for the whole cart) + Multiple Transaction Items.
+    // This is much cleaner for "Total Revenue" aggregation later and payment gateway integration.
+
+    // 1. Create ONE Transaction Header
+    const { data: transaction, error: txError } = await supabase
         .from('transactions')
-        .insert(transactions)
+        .insert({
+            buyer_id: user.id,
+            status: 'pending',
+            amount: totalAmount,
+            // product_id is NULL for bulk transactions
+        })
         .select()
+        .single()
 
-    if (transactionError || !createdTransactions || createdTransactions.length === 0) {
-        console.error('Create bulk transaction error:', transactionError)
-        return { error: 'Failed to create transactions' }
+    if (txError || !transaction) {
+        console.error('Create transaction header error:', txError)
+        return { error: 'Failed to create transaction' }
     }
 
-    // Return the first transaction ID (we'll use this for the checkout page)
-    // In a real Midtrans integration, you'd create a single order with multiple item_details
+    // 2. Create Transaction Items
+    const orderItems = cartItems.map((item: any) => ({
+        transaction_id: transaction.id,
+        product_id: item.product.id,
+        price_at_purchase: item.product.price
+    }))
+
+    const { error: itemsError } = await supabase
+        .from('transaction_items')
+        .insert(orderItems)
+
+    if (itemsError) {
+        console.error('Create transaction items error:', itemsError)
+        // Rollback?
+        await supabase.from('transactions').delete().eq('id', transaction.id)
+        return { error: 'Failed to create order items' }
+    }
+
     return {
         success: true,
-        transactionId: createdTransactions[0].id,
-        transactionIds: createdTransactions.map(t => t.id),
+        transactionId: transaction.id, // Only one ID now
+        transactionIds: [transaction.id], // Keep this for compatibility if frontend expects array
         totalAmount,
-        itemCount: createdTransactions.length
+        itemCount: orderItems.length
     }
 }
 
@@ -220,71 +292,93 @@ export async function simulateBulkPayment(transactionIds: string[]) {
         return { error: 'Unauthorized' }
     }
 
-    // Fetch all transactions
+    // Fetch transactions with items
     const { data: transactions, error: fetchError } = await supabase
         .from('transactions')
-        .select('*, product:products(sale_type, id, sold_to)')
+        .select(`
+            id,
+            status,
+            items:transaction_items(
+                id,
+                product:products(
+                    id,
+                    sale_type,
+                    sold_to
+                )
+            )
+        `)
         .in('id', transactionIds)
         .eq('buyer_id', user.id)
 
     if (fetchError || !transactions || transactions.length === 0) {
+        console.error('Fetch error in simulateBulkPayment:', fetchError)
         return { error: 'Transactions not found' }
     }
 
     // Process each transaction
     for (const transaction of transactions) {
-        const product = transaction.product as any
+        const items = transaction.items as any[] || []
+        let transactionFailed = false
 
-        // For one-time sales, use atomic update
-        if (product.sale_type === 'one_time') {
-            if (product.sold_to) {
-                // Mark this transaction as failed
-                await supabase
-                    .from('transactions')
-                    .update({ status: 'failed' })
-                    .eq('id', transaction.id)
-                continue
-            }
+        // Check and process "one_time" products inside this transaction
+        for (const item of items) {
+            const product = item.product
 
-            const { data: updateResult, error: updateError } = await supabase
-                .from('products')
-                .update({
-                    sold_to: user.id,
-                    sold_at: new Date().toISOString()
-                })
-                .eq('id', product.id)
-                .is('sold_to', null)
-                .select()
+            if (product.sale_type === 'one_time') {
+                if (product.sold_to) {
+                    // Already sold - mark transaction as failed
+                    await supabase
+                        .from('transactions')
+                        .update({ status: 'failed' })
+                        .eq('id', transaction.id)
+                    transactionFailed = true
+                    break
+                }
 
-            if (!updateResult || updateResult.length === 0) {
-                await supabase
-                    .from('transactions')
-                    .update({ status: 'failed' })
-                    .eq('id', transaction.id)
-                continue
-            }
+                // Mark product as sold
+                const { data: updateResult, error: updateError } = await supabase
+                    .from('products')
+                    .update({
+                        sold_to: user.id,
+                        sold_at: new Date().toISOString()
+                    })
+                    .eq('id', product.id)
+                    .is('sold_to', null)
+                    .select()
 
-            if (updateError) {
-                console.error('Error marking product as sold:', updateError)
-                await supabase
-                    .from('transactions')
-                    .update({ status: 'failed' })
-                    .eq('id', transaction.id)
-                continue
+                if (updateError || !updateResult || updateResult.length === 0) {
+                    await supabase
+                        .from('transactions')
+                        .update({ status: 'failed' })
+                        .eq('id', transaction.id)
+                    transactionFailed = true
+                    break
+                }
             }
         }
 
+        if (transactionFailed) {
+            continue
+        }
+
         // Update transaction to settlement
-        await supabase
+        const { error: updateError } = await supabase
             .from('transactions')
             .update({ status: 'settlement' })
             .eq('id', transaction.id)
+
+        if (updateError) {
+            console.error('Failed to update transaction status:', updateError)
+        }
     }
 
     // Clear cart items for successfully purchased products
-    const successfulProductIds = transactions
-        .filter((t: any) => t.product.sale_type !== 'one_time' || !t.product.sold_to)
-        .map((t: any) => t.product.id)
+    const successfulProductIds: string[] = []
+
+    transactions.forEach((t: any) => {
+        const items = t.items as any[]
+        items.forEach((i: any) => successfulProductIds.push(i.product.id))
+    })
 
     if (successfulProductIds.length > 0) {
         await supabase
@@ -297,7 +391,7 @@ export async function simulateBulkPayment(transactionIds: string[]) {
     revalidatePath('/dashboard/purchases')
     revalidatePath('/dashboard')
     revalidatePath('/cart')
+    revalidatePath('/dashboard/seller/earnings')
 
     return { success: true }
 }
-

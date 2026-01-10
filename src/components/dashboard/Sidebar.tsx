@@ -36,8 +36,8 @@ export function Sidebar() {
     const links = isSeller
         ? [
             { name: 'Dashboard', href: '/dashboard?mode=seller', icon: LayoutDashboard },
-            { name: 'My Products', href: '/dashboard/products?mode=seller', icon: Package },
-            { name: 'Earnings', href: '/dashboard/earnings?mode=seller', icon: DollarSign },
+            { name: 'My Products', href: '/dashboard/products', icon: Package },
+            { name: 'Earnings', href: '/dashboard/seller/earnings', icon: DollarSign },
             { name: 'Settings', href: '/dashboard/seller/settings', icon: Settings },
         ]
         : [
@@ -58,7 +58,7 @@ export function Sidebar() {
                     const Icon = link.icon
                     const isActive = pathName === link.href.split('?')[0]
                     return (
-                        <Link key={link.href} href={link.href}>
+                        <Link key={link.name} href={link.href}>
                             <Button
                                 variant={isActive ? "default" : "ghost"}
                                 className={`w-full justify-start border-2 rounded-sm uppercase font-bold text-left px-2 mb-1

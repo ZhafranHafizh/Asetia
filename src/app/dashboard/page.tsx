@@ -60,48 +60,54 @@ export default async function DashboardPage(props: {
             .limit(3)
         recentProducts = data
 
-        activeProductsCount = await supabase
+        // Check Product Ownership (Debug)
+        const { data: userProducts } = await supabase
             .from('products')
-            .select('*', { count: 'exact', head: true })
+            .select('id, title, seller_id')
             .eq('seller_id', user.id)
-            .then(res => res.count || 0)
+            .limit(3)
+        console.log('DEBUG: User has products:', userProducts?.length, 'Example:', userProducts?.[0])
 
-        // Fetch seller's product IDs for transaction queries
-        const { data: sellerProducts } = await supabase
-            .from('products')
-            .select('id')
+        // Fetch Stats from View (Robust)
+        const { data: stats } = await supabase
+            .from('seller_stats')
+            .select('*')
             .eq('seller_id', user.id)
+            .single()
 
-        const productIds = sellerProducts?.map(p => p.id) || []
-
-        if (productIds.length > 0) {
-            // Fetch transaction statistics
-            const { data: transactions } = await supabase
-                .from('transactions')
-                .select('amount, status')
-                .in('product_id', productIds)
-                .eq('status', 'settlement')
-
-            totalEarnings = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0
-            totalSales = transactions?.length || 0
-
-            // Fetch recent transactions with buyer and product details
-            const { data: recentSales } = await supabase
-                .from('transactions')
-                .select(`
-                    id,
-                    amount,
-                    created_at,
-                    buyer:profiles!transactions_buyer_id_fkey(full_name),
-                    product:products(title)
-                `)
-                .in('product_id', productIds)
-                .eq('status', 'settlement')
-                .order('created_at', { ascending: false })
-                .limit(5)
-
-            recentTransactions = recentSales
+        if (stats) {
+            console.log('DEBUG: Stats from View:', stats)
+            totalEarnings = Number(stats.total_earnings) || 0
+            totalSales = Number(stats.total_sales) || 0
+            activeProductsCount = Number(stats.active_products) || 0
+        } else {
+            // Fallback if view returns empty (shouldn't happen for valid seller, but maybe 0 rows)
+            console.log('DEBUG: No stats found in view')
         }
+
+
+        // Fetch recent sales using server action (bypasses all RLS and schema cache issues)
+        const { data: salesData, error: salesError } = await import('./actions').then(m => m.getSellerRecentSales(user.id))
+
+        console.log('DEBUG: Server Action Sales Count:', salesData?.length)
+        if (salesError) {
+            console.error('DEBUG: Server Action Sales Error:', salesError)
+        }
+
+        const recentSales = salesData || []
+
+
+        // Map flatten structure for UI
+        if (recentSales) {
+            recentTransactions = recentSales.map((item: any) => ({
+                id: item.id,
+                amount: item.price_at_purchase,
+                created_at: item.created_at,
+                product: item.product,
+                buyer: item.transaction?.buyer
+            }))
+        }
+
     } else {
         // Buyer data - fetch all marketplace products with filters
         let query = supabase
@@ -139,17 +145,6 @@ export default async function DashboardPage(props: {
 
     return (
         <div className="space-y-8">
-            {/* Sticky Header Wrapper */}
-            {/* We use negative margin to stretch to edges if inside a padded container, 
-                    container padding is px-8 (2rem). -mx-8 will stretch it. 
-                    Then we add px-8 back to content. 
-                    Top needs to be -py-8? No, `top-0` aligns to scrollport top. 
-                    But we have `py-8` on container. 
-                    So at scroll 0, we are 2rem down. 
-                    If we scroll, the sticky element hits top 0.
-                    To make it seamless, we might want to put this text OUTSIDE the padding? 
-                    Or just background works.
-                */}
             {/* Sticky Header Wrapper */}
             <div className="sticky top-0 z-40 bg-white pt-6 pb-4 -mx-8 px-8 border-b-4 border-black shadow-sm mb-8">
                 <div className="grid gap-4 md:grid-cols-2 md:items-end justify-between mb-6">

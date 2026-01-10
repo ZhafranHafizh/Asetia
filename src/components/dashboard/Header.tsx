@@ -11,12 +11,20 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { CartIconClient } from "@/components/cart/CartIconClient"
 
 export function Header() {
     const router = useRouter()
     const supabase = createClient()
+    const pathName = usePathname()
+    const searchParams = useSearchParams()
+
+    // Detect mode
+    const modeFromParams = searchParams.get('mode')
+    const isSellerPath = pathName.startsWith('/dashboard/seller') || pathName.startsWith('/dashboard/products') || pathName.startsWith('/dashboard/earnings')
+    const mode = modeFromParams || (isSellerPath ? 'seller' : 'buyer')
+    const isSeller = mode === 'seller'
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -28,7 +36,8 @@ export function Header() {
             <h2 className="font-bold text-lg uppercase tracking-tight">Dashboard</h2>
 
             <div className="flex items-center gap-4">
-                <CartIconClient />
+                {/* Only show Cart in Buyer Mode */}
+                {!isSeller && <CartIconClient />}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
