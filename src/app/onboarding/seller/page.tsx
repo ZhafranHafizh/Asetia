@@ -18,8 +18,9 @@ export default async function SellerOnboardingPage() {
         .eq('id', user.id)
         .single()
 
-    // If already submitted onboarding (verification_status is not 'none'), redirect to verification page
-    if (profile?.verification_status && profile.verification_status !== 'none') {
+    // If already verified, redirect to verification page (they don't need to onboard again)
+    // But if pending or not verified, allow access so they can complete verification
+    if (profile?.verification_status === 'verified') {
         redirect('/onboarding/verification')
     }
 

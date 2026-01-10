@@ -84,7 +84,18 @@ export default async function SellerSettingsPage() {
                                             : 'Complete onboarding to get verified'}
                                 </p>
                             </div>
-                            {getVerificationBadge()}
+                            <div className="flex items-center gap-4">
+                                {getVerificationBadge()}
+                                {profile.verification_status !== 'verified' && (
+                                    <a
+                                        href="/onboarding/seller"
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-lime-400 border-4 border-black rounded-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase text-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
+                                    >
+                                        <CheckCircle className="h-5 w-5" />
+                                        Verify Now
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

@@ -60,13 +60,7 @@ export default async function DashboardPage(props: {
             .limit(3)
         recentProducts = data
 
-        // Check Product Ownership (Debug)
-        const { data: userProducts } = await supabase
-            .from('products')
-            .select('id, title, seller_id')
-            .eq('seller_id', user.id)
-            .limit(3)
-        console.log('DEBUG: User has products:', userProducts?.length, 'Example:', userProducts?.[0])
+
 
         // Fetch Stats from View (Robust)
         const { data: stats } = await supabase
@@ -76,23 +70,16 @@ export default async function DashboardPage(props: {
             .single()
 
         if (stats) {
-            console.log('DEBUG: Stats from View:', stats)
             totalEarnings = Number(stats.total_earnings) || 0
             totalSales = Number(stats.total_sales) || 0
             activeProductsCount = Number(stats.active_products) || 0
-        } else {
-            // Fallback if view returns empty (shouldn't happen for valid seller, but maybe 0 rows)
-            console.log('DEBUG: No stats found in view')
         }
 
 
         // Fetch recent sales using server action (bypasses all RLS and schema cache issues)
         const { data: salesData, error: salesError } = await import('./actions').then(m => m.getSellerRecentSales(user.id))
 
-        console.log('DEBUG: Server Action Sales Count:', salesData?.length)
-        if (salesError) {
-            console.error('DEBUG: Server Action Sales Error:', salesError)
-        }
+
 
         const recentSales = salesData || []
 

@@ -32,13 +32,6 @@ export default async function EarningsPage() {
         console.error('Error fetching earnings:', error)
     }
 
-    // Debug: Check what the join returns
-    console.log('EARNINGS DEBUG: Raw count:', rawTransactions?.length)
-    if (rawTransactions && rawTransactions.length > 0) {
-        console.log('EARNINGS DEBUG: First item:', JSON.stringify(rawTransactions[0], null, 2))
-        console.log('EARNINGS DEBUG: Transaction status from join:', rawTransactions[0].transaction)
-    }
-
     // Fetch Stats from View (Robust)
     const { data: stats } = await supabase
         .from('seller_stats')

@@ -1,12 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 
 export async function getSellerRecentSales(sellerId: string) {
     const supabase = await createClient()
 
-    console.log('SERVER ACTION: Fetching sales for seller:', sellerId)
+
 
     // Try simpler approach - get products first, then transaction_items
     const { data: products, error: prodError } = await supabase
@@ -20,7 +19,7 @@ export async function getSellerRecentSales(sellerId: string) {
     }
 
     const productIds = products?.map(p => p.id) || []
-    console.log('SERVER ACTION: Found products:', productIds.length)
+
 
     if (productIds.length === 0) {
         return { data: [], error: null }
@@ -40,7 +39,7 @@ export async function getSellerRecentSales(sellerId: string) {
         .order('created_at', { ascending: false })
         .limit(10)
 
-    console.log('SERVER ACTION: Found transaction items:', items?.length)
+
 
     if (itemsError) {
         console.error('SERVER ACTION: Items error:', itemsError)
@@ -97,6 +96,6 @@ export async function getSellerRecentSales(sellerId: string) {
             }
         })
 
-    console.log('SERVER ACTION: Returning sales:', sales.length)
+
     return { data: sales, error: null }
 }
